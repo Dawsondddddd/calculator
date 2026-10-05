@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算器 - 前后端分离示例</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px 16px 40px;
+      background: #f4f5f7;
+      color: #1f2328;
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    h1 {
+      margin: 0 0 20px;
+      font-size: 22px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .panel {
+      background: #ffffff;
+      border: 1px solid #dfe3e8;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    #expression {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #c9d1d9;
+      border-radius: 6px;
+      font-size: 20px;
+      text-align: right;
+      letter-spacing: 0;
+      background: #fbfcfd;
+    }
+
+    #expression:focus {
+      outline: 2px solid #2f6fed;
+      outline-offset: -1px;
+      background: #ffffff;
+    }
+
+    #result {
+      min-height: 28px;
+      margin: 10px 2px 14px;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: right;
+      overflow-wrap: anywhere;
+      color: #2f6fed;
+    }
+
+    #result.error { color: #c0392b; font-weight: 500; font-size: 15px; }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .keys button {
+      padding: 14px 0;
+      border: 1px solid #d5dae0;
+      border-radius: 6px;
+      background: #fbfcfd;
+      color: #1f2328;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .keys button:hover { background: #eef1f5; }
+    .keys button:active { background: #e2e6eb; }
+    .keys button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .keys button.equals {
+      background: #2f6fed;
+      border-color: #2f6fed;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .keys button.equals:hover { background: #2560d4; }
+
+    .keys button.function { color: #4a5460; font-size: 16px; }
+
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    #clear-button {
+      padding: 6px 12px;
+      border: 1px solid #d5dae0;
+      border-radius: 6px;
+      background: #fbfcfd;
+      color: #4a5460;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    #clear-button:hover { background: #eef1f5; }
+
+    #history {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      max-height: 460px;
+      overflow-y: auto;
+    }
+
+    #history li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 2px;
+      border-bottom: 1px solid #eceff2;
+    }
+
+    #history li:last-child { border-bottom: none; }
+
+    .history-expression {
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .history-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #6b7681;
+    }
+
+    .delete-button {
+      flex: none;
+      padding: 5px 10px;
+      border: 1px solid #e3b7b1;
+      border-radius: 6px;
+      background: #fdf3f2;
+      color: #c0392b;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .delete-button:hover { background: #f9e4e1; }
+
+    .empty {
+      padding: 16px 2px;
+      color: #6b7681;
+      font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>计算器</h1>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>表达式</h2>
+      <input
+        id="expression"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder="例如 (1+2)*3"
+        aria-label="表达式"
+      >
+      <div id="result" role="status" aria-live="polite"></div>
+
+      <div class="keys">
+        <button class="function" data-action="clear" title="清空输入">C</button>
+        <button data-value="(">(</button>
+        <button data-value=")">)</button>
+        <button class="function" data-action="backspace" title="退格">退格</button>
+
+        <button data-value="7">7</button>
+        <button data-value="8">8</button>
+        <button data-value="9">9</button>
+        <button data-value="÷">÷</button>
+
+        <button data-value="4">4</button>
+        <button data-value="5">5</button>
+        <button data-value="6">6</button>
+        <button data-value="×">×</button>
+
+        <button data-value="1">1</button>
+        <button data-value="2">2</button>
+        <button data-value="3">3</button>
+        <button data-value="−">−</button>
+
+        <button data-value="0">0</button>
+        <button data-value=".">.</button>
+        <button data-value="+">+</button>
+        <button class="equals" data-action="calculate" title="计算">=</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="history-head">
+        <h2>计算历史</h2>
+        <button id="clear-button" type="button">清空历史</button>
+      </div>
+      <ul id="history"></ul>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    const expressionInput = document.getElementById("expression");
+    const resultBox = document.getElementById("result");
+    const historyList = document.getElementById("history");
+    const clearButton = document.getElementById("clear-button");
+
+    function showResult(text) {
+      resultBox.className = "";
+      resultBox.textContent = text;
+    }
+
+    function showError(text) {
+      resultBox.className = "error";
+      resultBox.textContent = text;
+    }
+
+    function toApiExpression(displayText) {
+      return displayText
+        .replace(/×/g, "*")
+        .replace(/÷/g, "/")
+        .replace(/−/g, "-")
+        .trim();
+    }
+
+    function appendValue(value) {
+      expressionInput.value += value;
+      expressionInput.focus();
+    }
+
+    async function calculate() {
+      const expression = toApiExpression(expressionInput.value);
+      if (!expression) {
+        showError("请输入表达式");
+        return;
+      }
+
+      try {
+        const response = await fetch(API_BASE + "/api/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expression: expression })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          showError(data.message || "计算失败");
+          return;
+        }
+        showResult(data.expression + " = " + data.result);
+        await loadHistory();
+      } catch (error) {
+        showError("无法连接后端服务, 请确认后端已启动");
+      }
+    }
+
+    function renderHistory(records) {
+      historyList.textContent = "";
+      if (records.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "empty";
+        empty.textContent = "暂无历史记录";
+        historyList.appendChild(empty);
+        return;
+      }
+
+      records.forEach(function (record) {
+        const item = document.createElement("li");
+
+        const info = document.createElement("div");
+        const expressionLine = document.createElement("div");
+        expressionLine.className = "history-expression";
+        expressionLine.textContent = record.expression + " = " + record.result;
+        const metaLine = document.createElement("div");
+        metaLine.className = "history-meta";
+        metaLine.textContent = "#" + record.id + " · " + record.created_at;
+        info.appendChild(expressionLine);
+        info.appendChild(metaLine);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete-button";
+        deleteButton.type = "button";
+        deleteButton.textContent = "删除";
+        deleteButton.addEventListener("click", function () {
+          deleteRecord(record.id);
+        });
+
+        item.appendChild(info);
+        item.appendChild(deleteButton);
+        historyList.appendChild(item);
+      });
+    }
+
+    async function loadHistory() {
+      try {
+        const response = await fetch(API_BASE + "/api/history");
+        const data = await response.json();
+        if (response.ok && data.success) {
+          renderHistory(data.data);
+        } else {
+          renderHistory([]);
+        }
+      } catch (error) {
+        renderHistory([]);
+      }
+    }
+
+    async function deleteRecord(id) {
+      try {
+        await fetch(API_BASE + "/api/history/" + id, { method: "DELETE" });
+      } catch (error) {
+        showError("无法连接后端服务, 请确认后端已启动");
+        return;
+      }
+      await loadHistory();
+    }
+
+    async function clearHistory() {
+      try {
+        await fetch(API_BASE + "/api/history", { method: "DELETE" });
+      } catch (error) {
+        showError("无法连接后端服务, 请确认后端已启动");
+        return;
+      }
+      await loadHistory();
+    }
+
+    document.querySelectorAll(".keys button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const action = button.dataset.action;
+        if (action === "clear") {
+          expressionInput.value = "";
+          showResult("");
+          expressionInput.focus();
+          return;
+        }
+        if (action === "backspace") {
+          expressionInput.value = expressionInput.value.slice(0, -1);
+          expressionInput.focus();
+          return;
+        }
+        if (action === "calculate") {
+          calculate();
+          return;
+        }
+        appendValue(button.dataset.value);
+      });
+    });
+
+    expressionInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        calculate();
+      } else if (event.key === "Escape") {
+        expressionInput.value = "";
+        showResult("");
+      }
+    });
+
+    clearButton.addEventListener("click", clearHistory);
+
+    loadHistory();
+  </script>
+</body>
+</html>
